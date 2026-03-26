@@ -20,13 +20,12 @@ Each category gets a score out of 100. They're weighted into an overall rating o
 
 ## Scoring weights
 
-| Category | Weight |
-|----------|--------|
-| Threat Intelligence | 25% |
-| SSL/TLS Health | 20% |
-| Attack Surface | 20% |
-| Breach History | 20% |
-| Email Security | 15% |
+Category: Weight 
+Threat Intelligence: 25%
+SSL/TLS Health: 20% 
+Attack Surface: 20% 
+Breach History: 20%
+Email Security: 15%
 
 Threat intel is weighted highest because active malicious classification is the strongest signal. Breach history and attack surface are weighted equally because both reflect systemic security gaps that compound over time.
 
