@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VendorScan</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0c10;--surface:#10131a;--border:#1c2130;--border2:#252d40;
+      --text:#b8c0d0;--dim:#4a5268;--bright:#dde3f0;
+      --green:#2ecc8a;--green-bg:#0d2418;
+      --yellow:#e8b84b;--yellow-bg:#2a2008;
+      --orange:#e87a3a;--orange-bg:#2a1408;
+      --red:#e84a6a;--red-bg:#2a0814;
+      --blue:#4a90e8;
+      --mono:'IBM Plex Mono',monospace;
+      --sans:'IBM Plex Sans',sans-serif;
+    }
+    body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+    body::after{content:'';position:fixed;inset:0;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);
+      pointer-events:none;z-index:999}
+
+    .wrap{max-width:880px;margin:0 auto;padding:52px 24px 80px}
+
+    /* header */
+    .eyebrow{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:0.2em;
+      text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+    h1{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--bright);
+      letter-spacing:-0.02em;margin-bottom:6px}
+    .sub{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:40px}
+
+    /* search */
+    .search{display:flex;border:1px solid var(--border2);border-radius:8px;
+      overflow:hidden;background:var(--surface);transition:border-color 0.2s;margin-bottom:12px}
+    .search:focus-within{border-color:var(--green)}
+    .prefix{font-family:var(--mono);font-size:13px;color:var(--dim);
+      padding:14px 12px 14px 18px;white-space:nowrap}
+    #domain-input{flex:1;background:transparent;border:none;outline:none;
+      font-family:var(--mono);font-size:13px;color:var(--bright);
+      padding:14px 0;caret-color:var(--green)}
+    #domain-input::placeholder{color:var(--dim)}
+    #scan-btn{background:var(--green);color:#061a10;font-family:var(--mono);
+      font-size:12px;font-weight:700;letter-spacing:0.08em;border:none;
+      cursor:pointer;padding:14px 22px;transition:background 0.15s;flex-shrink:0}
+    #scan-btn:hover{background:#3eeda0}
+    #scan-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+    .quick-domains{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px}
+    .qdomain{font-family:var(--mono);font-size:11px;color:var(--dim);
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:4px;padding:4px 10px;cursor:pointer;transition:all 0.15s}
+    .qdomain:hover{color:var(--green);border-color:var(--green)}
+
+    .status{font-family:var(--mono);font-size:11px;color:var(--dim);
+      min-height:16px;margin-bottom:28px}
+    .status.running{color:var(--yellow)}.status.done{color:var(--green)}.status.err{color:var(--red)}
+
+    /* results */
+    #results{display:none}
+
+    /* hero */
+    .hero{display:flex;align-items:center;gap:28px;background:var(--surface);
+      border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin-bottom:16px}
+    .ring-wrap{position:relative;width:90px;height:90px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center}
+    .ring-wrap svg{position:absolute;inset:0;transform:rotate(-90deg)}
+    .track{fill:none;stroke:var(--border2);stroke-width:6}
+    .fill{fill:none;stroke-width:6;stroke-linecap:round;
+      stroke-dasharray:251.3;stroke-dashoffset:251.3;transition:stroke-dashoffset 0.9s ease}
+    .score-num{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--bright);z-index:1}
+    .hero-info{}
+    .hero-domain{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:5px}
+    .hero-rating{font-family:var(--mono);font-size:20px;font-weight:700;margin-bottom:3px}
+    .hero-rating.LOW{color:var(--green)}.hero-rating.MEDIUM{color:var(--yellow)}
+    .hero-rating.HIGH{color:var(--orange)}.hero-rating.CRITICAL{color:var(--red)}
+    .hero-ts{font-size:11px;color:var(--dim)}
+
+    /* categories */
+    .cats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    @media(max-width:580px){.cats{grid-template-columns:1fr}}
+    .cat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+    .cat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .cat-name{font-family:var(--mono);font-size:10px;color:var(--dim);
+      text-transform:uppercase;letter-spacing:0.12em}
+    .cat-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--bright)}
+    .bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-bottom:7px}
+    .bar-fill{height:100%;border-radius:2px;transition:width 0.7s ease}
+    .cat-note{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+    /* findings */
+    .panel{background:var(--surface);border:1px solid var(--border);
+      border-radius:10px;overflow:hidden;margin-bottom:16px}
+    .panel-head{padding:11px 16px;border-bottom:1px solid var(--border);
+      font-family:var(--mono);font-size:10px;color:var(--dim);
+      text-transform:uppercase;letter-spacing:0.12em;
+      display:flex;justify-content:space-between}
+    .finding{display:flex;align-items:flex-start;gap:12px;
+      padding:11px 16px;border-bottom:1px solid var(--border);font-size:12px}
+    .finding:last-child{border-bottom:none}
+    .ftag{font-family:var(--mono);font-size:10px;font-weight:600;
+      padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+    .ftext{color:var(--text);line-height:1.5}
+    .no-findings{padding:18px 16px;font-family:var(--mono);font-size:12px;
+      color:var(--green);text-align:center}
+
+    /* raw */
+    .raw-toggle{width:100%;padding:11px 16px;background:transparent;border:none;
+      cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--dim);
+      text-transform:uppercase;letter-spacing:0.12em;text-align:left;
+      display:flex;justify-content:space-between}
+    .raw-toggle:hover{color:var(--text)}
+    #raw-body{display:none;padding:14px 16px;overflow-x:auto}
+    #raw-body pre{font-family:var(--mono);font-size:11px;color:var(--text);
+      line-height:1.6;white-space:pre-wrap}
+
+    footer{margin-top:48px;text-align:center;font-family:var(--mono);
+      font-size:10px;color:var(--dim);letter-spacing:0.06em}
+
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+    .blink{animation:blink 1s infinite}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow"><div class="dot"></div>vendor risk assessment tool</div>
+  <h1>VendorScan</h1>
+  <div class="sub">ssl · threat intel · attack surface · breach history · email security</div>
+
+  <div class="search">
+    <span class="prefix">https://</span>
+    <input id="domain-input" type="text" placeholder="enter vendor domain (e.g. salesforce.com)"
+      autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')runScan()"/>
+    <button id="scan-btn" onclick="runScan()">SCAN →</button>
+  </div>
+
+  <div class="quick-domains">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--dim);padding:4px 0">Try:</span>
+    <span class="qdomain" onclick="quick('github.com')">github.com</span>
+    <span class="qdomain" onclick="quick('yahoo.com')">yahoo.com</span>
+    <span class="qdomain" onclick="quick('okta.com')">okta.com</span>
+    <span class="qdomain" onclick="quick('crowdstrike.com')">crowdstrike.com</span>
+    <span class="qdomain" onclick="quick('dropbox.com')">dropbox.com</span>
+    <span class="qdomain" onclick="quick('zoom.us')">zoom.us</span>
+  </div>
+
+  <div class="status" id="status">Enter a vendor domain to begin assessment.</div>
+
+  <div id="results">
+
+    <div class="hero">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 90 90"><circle class="track" cx="45" cy="45" r="40"/>
+          <circle class="fill" id="ring" cx="45" cy="45" r="40"/></svg>
+        <span class="score-num" id="score-num">0</span>
+      </div>
+      <div class="hero-info">
+        <div class="hero-domain" id="hero-domain"></div>
+        <div class="hero-rating" id="hero-rating"></div>
+        <div class="hero-ts" id="hero-ts"></div>
+      </div>
+    </div>
+
+    <div class="cats" id="cats"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span>Security Findings</span>
+        <span id="finding-count" style="color:var(--dim)"></span>
+      </div>
+      <div id="findings"></div>
+    </div>
+
+    <div class="panel">
+      <button class="raw-toggle" onclick="toggleRaw()">
+        <span>Raw JSON Report</span><span id="raw-arrow">▼</span>
+      </button>
+      <div id="raw-body"><pre id="raw-pre"></pre></div>
+    </div>
+
+  </div>
+
+  <footer>built by w &nbsp;·&nbsp; python / flask / weighted risk scoring model &nbsp;·&nbsp; 2025</footer>
+</div>
+
+<script>
+const CAT_COLOR = {ssl:'#4a90e8',threat_intel:'#e84a6a',attack_surface:'#e87a3a',breach_history:'#e8b84b',email_security:'#2ecc8a'};
+const CAT_LABEL = {ssl:'SSL / TLS',threat_intel:'Threat Intel',attack_surface:'Attack Surface',breach_history:'Breach History',email_security:'Email Security'};
+const RISK_COLOR = {LOW:'#2ecc8a',MEDIUM:'#e8b84b',HIGH:'#e87a3a',CRITICAL:'#e84a6a'};
+
+function quick(d){ document.getElementById('domain-input').value=d; runScan(); }
+
+async function runScan(){
+  const domain = document.getElementById('domain-input').value.trim();
+  if(!domain){ setStatus('Enter a domain first.','err'); return; }
+  document.getElementById('scan-btn').disabled = true;
+  document.getElementById('results').style.display = 'none';
+  setStatus('<span class="blink">assessing ' + domain + '...</span>','running');
+  try{
+    const res = await fetch('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain})});
+    const data = await res.json();
+    if(data.error){ setStatus('Error: '+data.error,'err'); return; }
+    render(data);
+    setStatus('Assessment complete — '+data.overall.risk_rating+' risk ('+data.overall.score+'/100)','done');
+  } catch(e){ setStatus('Error: '+e.message,'err'); }
+  finally{ document.getElementById('scan-btn').disabled=false; }
+}
+
+function render(data){
+  const {overall,category_scores,findings,report_metadata} = data;
+  const C = 251.3;
+  const offset = C - (overall.score/100)*C;
+  const ring = document.getElementById('ring');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = RISK_COLOR[overall.risk_rating];
+  document.getElementById('score-num').textContent = Math.round(overall.score);
+
+  document.getElementById('hero-domain').textContent = report_metadata.vendor_domain;
+  const rEl = document.getElementById('hero-rating');
+  rEl.textContent = overall.risk_rating + ' RISK';
+  rEl.className = 'hero-rating ' + overall.risk_rating;
+  document.getElementById('hero-ts').textContent = 'Generated ' + new Date(report_metadata.generated_at).toLocaleString();
+
+  document.getElementById('cats').innerHTML = Object.entries(category_scores).map(([k,v])=>`
+    <div class="cat">
+      <div class="cat-top">
+        <span class="cat-name">${CAT_LABEL[k]||k}</span>
+        <span class="cat-score">${v.score}/100</span>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:${v.score}%;background:${CAT_COLOR[k]}"></div></div>
+      <div class="cat-note">${v.note}</div>
+    </div>`).join('');
+
+  document.getElementById('finding-count').textContent = findings.length+' finding(s)';
+  document.getElementById('findings').innerHTML = findings.length===0
+    ? '<div class="no-findings">✓ No security findings detected</div>'
+    : findings.map(f=>`
+        <div class="finding">
+          <span class="ftag" style="background:${CAT_COLOR[f.category]}22;color:${CAT_COLOR[f.category]}">${CAT_LABEL[f.category]||f.category}</span>
+          <span class="ftext">${f.finding}</span>
+        </div>`).join('');
+
+  document.getElementById('raw-pre').textContent = JSON.stringify(data,null,2);
+  document.getElementById('results').style.display='block';
+}
+
+function toggleRaw(){
+  const b=document.getElementById('raw-body'), a=document.getElementById('raw-arrow');
+  b.style.display=b.style.display==='none'?'block':'none';
+  a.textContent=b.style.display==='none'?'▼':'▲';
+}
+function setStatus(m,t){const e=document.getElementById('status');e.innerHTML=m;e.className='status '+t;}
+</script>
+</body>
+</html>
